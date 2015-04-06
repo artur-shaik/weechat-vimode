@@ -76,14 +76,14 @@ vimode_settings = {'no_warn': ("off", "don't warn about problematic"
 # Regex patterns.
 # ---------------
 
-WHITESPACE = re.compile(r"\s")
-IS_KEYWORD = re.compile(r"[a-zA-Z0-9_@À-ÿ]")
-REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\S|(?<=\s)\S")
-REGEX_MOTION_UPPERCASE_W = re.compile(r"(?<=\s)\S")
-REGEX_MOTION_UPPERCASE_E = re.compile(r"\S(?!\S)")
+WHITESPACE = re.compile(r"\s", re.UNICODE)
+IS_KEYWORD = re.compile(r"[a-zA-Z0-9_@À-ÿа-яА-Я]", re.UNICODE)
+REGEX_MOTION_LOWERCASE_W = re.compile(r"\b\S|(?<=\s)\S", re.UNICODE)
+REGEX_MOTION_UPPERCASE_W = re.compile(r"(?<=\s)\S", re.UNICODE)
+REGEX_MOTION_UPPERCASE_E = re.compile(r"\S(?!\S)", re.UNICODE)
 REGEX_MOTION_UPPERCASE_B = REGEX_MOTION_UPPERCASE_E
 REGEX_MOTION_G_UPPERCASE_E = REGEX_MOTION_UPPERCASE_W
-REGEX_MOTION_CARRET = re.compile(r"\S")
+REGEX_MOTION_CARRET = re.compile(r"\S", re.UNICODE)
 REGEX_INT = r"[0-9]"
 
 # Regex used to detect problematic keybindings.
@@ -129,13 +129,28 @@ VI_OPERATORS = ["c", "d", "y"]
 # "motion_X" where X is the motion (e.g. `motion_w()`).
 # See Also: `SPECIAL_CHARS`.
 VI_MOTIONS = ["w", "e", "b", "^", "$", "h", "l", "W", "E", "B", "f", "F", "t",
-              "T", "ge", "gE", "0"]
+              "T", "ge", "gE", "0",
+            # cyr
+              "ц", "у", "и",           "р", "д", "Ц", "У", "И", "а", "А",    
+                   "пу", "пУ"]
 
 # Special characters for motions. The corresponding function's name is
 # converted before calling. For example, "^" will call `motion_carret` instead
 # of `motion_^` (which isn't allowed because of illegal characters).
 SPECIAL_CHARS = {'^': "carret",
-                 '$': "dollar"}
+                 '$': "dollar",
+                # cyr
+                 'ц': "cyr_w",
+                 'у': "cyr_e",
+                 'и': "cyr_b",
+                 'р': "cyr_h",
+                 'д': "cyr_l",
+                 'Ц': "cyr_W",
+                 'У': "cyr_E",
+                 'И': "cyr_B",
+                 'пу': "cyr_ge",
+                 'пУ': "cyr_gE"
+                 }
 
 
 # Methods for vi operators, motions and key bindings.
@@ -566,6 +581,37 @@ def cb_motion_T(update_last=True):
         last_search_motion = {'motion': "T", 'data': pattern}
     cb_key_combo_default(None, None, "")
 
+# cyr motions
+
+def motion_cyr_w(input_line, cur, count):
+    return motion_w(input_line, cur, count)
+
+def motion_cyr_e(input_line, cur, count):
+    return motion_e(input_line, cur, count)
+
+def motion_cyr_b(input_line, cur, count):
+    return motion_b(input_line, cur, count)
+
+def motion_cyr_h(input_line, cur, count):
+    return motion_h(input_line, cur, count)
+
+def motion_cyr_l(input_line, cur, count):
+    return motion_l(input_line, cur, count)
+
+def motion_cyr_W(input_line, cur, count):
+    return motion_W(input_line, cur, count)
+
+def motion_cyr_E(input_line, cur, count):
+    return motion_E(input_line, cur, count)
+
+def motion_cyr_B(input_line, cur, count):
+    return motion_B(input_line, cur, count)
+
+def motion_cyr_ge(input_line, cur, count):
+    return motion_ge(input_line, cur, count)
+
+def motion_cyr_gE(input_line, cur, count):
+    return motion_gE(input_line, cur, count)
 
 # Keys:
 # -----
@@ -823,11 +869,43 @@ VI_KEYS = {'j': "/window scroll_down",
            '\x01Wv': "/window splitv",
            '\x01Wq': "/window merge",
            ';': key_semicolon,
-           ',': key_comma}
+           ',': key_comma,
+
+           # cyr
+           'о': "/window scroll_down",
+           'л': "/window scroll_up",
+           'П': key_G,
+           'пп': "/window scroll_top",
+           'ч': "/input delete_next_char",
+           'Ч': "/input delete_previous_char",
+           'вв': "/input delete_line",
+           'В': "/input delete_end_of_line",
+           'сс': key_cc,
+           'С': key_C,
+           'ш': key_i,
+           'ф': key_a,
+           'Ф': key_A,
+           'Ш': key_I,
+           'нн': key_yy,
+           'з': "/input clipboard_paste",
+           '/': "/input search_text",
+           'пе': "/buffer +1",
+           'Л': "/buffer +1",
+           'пЕ': "/buffer -1",
+           'О': "/buffer -1",
+           'к': key_r,
+           'К': key_R,
+           '\x01[a': "/input jump_smart",
+           '\x01[ф': "/input jump_smart"
+           }
+           
 
 # Add alt-j<number> bindings.
 for i in range(10, 99):
     VI_KEYS['\x01[j%s' % i] = "/buffer %s" % i
+
+    # cyr
+    VI_KEYS['\x01[о%s' % i] = "/buffer %s" % i
 
 
 # Key handling.
@@ -969,7 +1047,7 @@ def cb_key_combo_default(data, signal, signal_data):
         return weechat.WEECHAT_RC_OK_EAT
 
     buf = weechat.current_buffer()
-    input_line = weechat.buffer_get_string(buf, "input")
+    input_line = unicode(weechat.buffer_get_string(buf, "input"), 'UTF-8')
     cur = weechat.buffer_get_integer(buf, "input_pos")
 
     # It's a key. If the corresponding value is a string, we assume it's a
